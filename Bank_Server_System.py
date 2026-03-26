@@ -1,20 +1,76 @@
 import csv
 import random
 import re
+import os
 from datetime import datetime
 
-accounts_file = "accounts.csv"
-login_file = "login.csv"
+# -------- PATH CONFIG --------
+
+config_file = "config.txt"
+
+if os.path.exists(config_file):
+    with open(config_file, "r") as f:
+        folder_path = f.read().strip()
+    print("Using saved path:", folder_path)
+else:
+    folder_path = input("Enter folder path to save CSV files: ")
+
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    with open(config_file, "w") as f:
+        f.write(folder_path)
+
+    print("Path saved for future use:", folder_path)
+
+# Ensure folder exists
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+
+accounts_file = os.path.join(folder_path, "accounts.csv")
+login_file = os.path.join(folder_path, "login.csv")
+
+
+# -------- CREATE FILES WITH HEADERS --------
+
+def create_files_with_headers():
+
+    if not os.path.exists(accounts_file):
+        with open(accounts_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "Account Number",
+                "Account Holder Name",
+                "DOB",
+                "Age",
+                "Gender",
+                "Phone Number",
+                "Email",
+                "ID Type",
+                "ID Number",
+                "Balance"
+            ])
+
+    if not os.path.exists(login_file):
+        with open(login_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "Username",
+                "Password",
+                "Account Number"
+            ])
+
+
+create_files_with_headers()
+
 
 # -------- ACCOUNT NUMBER --------
-
 
 def generate_account_number():
     return str(random.randint(100000000000, 999999999999))
 
 
 # -------- VALIDATIONS --------
-
 
 def get_phone():
     while True:
@@ -38,8 +94,7 @@ def get_dob():
         try:
             birth = datetime.strptime(dob, "%d-%m-%Y")
             today = datetime.today()
-            age = today.year - birth.year - (
-                (today.month, today.day) < (birth.month, birth.day))
+            age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
             return dob, age
         except:
             print("Invalid date format")
@@ -64,9 +119,7 @@ def get_gender():
 
 
 def get_identity():
-
     while True:
-
         print("1 Aadhaar")
         print("2 PAN")
 
@@ -74,58 +127,43 @@ def get_identity():
 
         if ch == "1":
             num = input("Enter Aadhaar Number: ")
-
             if num.isdigit() and len(num) == 12:
                 return "Aadhaar", num
-
             print("Aadhaar must be 12 digits")
 
         elif ch == "2":
-
             num = input("Enter PAN Number: ").upper()
-
             if re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', num):
                 return "PAN", num
-
             print("Invalid PAN format")
 
 
 def get_ifsc():
-
     while True:
-
         code = input("Enter IFSC Code: ").upper()
-
         if re.match(r'^[A-Z]{4}0[A-Z0-9]{6}$', code):
             return code
-
         print("Invalid IFSC format")
 
 
 def get_account_number():
-
     while True:
-
         acc = input("Receiver Account Number: ")
-
         if acc.isdigit() and len(acc) == 12:
             return acc
-
         print("Account number must be 12 digits")
 
 
-# -------- USERNAME CHECK --------
-
+# -------- USERNAME --------
 
 def get_username():
-
     while True:
-
         username = input("Create Username: ")
 
         try:
             with open(login_file) as f:
                 reader = csv.reader(f)
+                next(reader)  # skip header
 
                 for row in reader:
                     if row[0] == username:
@@ -133,46 +171,32 @@ def get_username():
                         break
                 else:
                     return username
-        except FileNotFoundError:
+        except:
             return username
 
 
 # -------- CREATE ACCOUNT --------
 
-
 def create_account():
 
     name = input("Enter Name: ")
-
     dob, age = get_dob()
-
     gender = get_gender()
-
     phone = get_phone()
-
     email = get_email()
-
     id_type, id_num = get_identity()
-
     username = get_username()
-
     password = input("Create Password: ")
-
     balance = float(input("Enter Initial Deposit: "))
 
     acc_no = generate_account_number()
 
     with open(accounts_file, "a", newline="") as f:
         writer = csv.writer(f)
-
-        writer.writerow([
-            acc_no, name, dob, age, gender, phone, email, id_type, id_num,
-            balance
-        ])
+        writer.writerow([acc_no, name, dob, age, gender, phone, email, id_type, id_num, balance])
 
     with open(login_file, "a", newline="") as f:
         writer = csv.writer(f)
-
         writer.writerow([username, password, acc_no])
 
     print("Account Created Successfully")
@@ -181,7 +205,6 @@ def create_account():
 
 # -------- LOGIN --------
 
-
 def login():
 
     username = input("Enter Username: ")
@@ -189,26 +212,21 @@ def login():
 
     try:
         with open(login_file) as f:
-
             reader = csv.reader(f)
+            next(reader)  # skip header
 
             for row in reader:
-
                 if row[0] == username and row[1] == password:
-
                     print("Login Successful")
-
                     return row[2], password
     except:
         pass
 
     print("Invalid login")
-
     return None, None
 
 
 # -------- CHECK BALANCE --------
-
 
 def check_balance(acc, password):
 
@@ -219,19 +237,16 @@ def check_balance(acc, password):
         return
 
     with open(accounts_file) as f:
-
         reader = csv.reader(f)
+        next(reader)  # skip header
 
         for row in reader:
-
             if row[0] == acc:
-
                 print("Current Balance:", row[9])
                 return
 
 
-# -------- DEPOSIT MONEY --------
-
+# -------- DEPOSIT --------
 
 def deposit_money(acc, password):
 
@@ -247,29 +262,20 @@ def deposit_money(acc, password):
 
     with open(accounts_file) as f:
         reader = csv.reader(f)
-        for row in reader:
-            accounts.append(row)
+        accounts = list(reader)
 
-    for row in accounts:
-
+    for row in accounts[1:]:
         if row[0] == acc:
-
-            new_balance = float(row[9]) + amount
-
-            row[9] = str(new_balance)
-
+            row[9] = str(float(row[9]) + amount)
             print("Deposit Successful")
-            print("Updated Balance:", new_balance)
+            print("Updated Balance:", row[9])
 
     with open(accounts_file, "w", newline="") as f:
-
         writer = csv.writer(f)
-
         writer.writerows(accounts)
 
 
 # -------- NET BANKING --------
-
 
 def net_banking_menu(acc, password):
 
@@ -285,9 +291,7 @@ def net_banking_menu(acc, password):
         if ch == "1":
 
             receiver = get_account_number()
-
             ifsc = get_ifsc()
-
             amount = float(input("Enter Amount: "))
 
             verify = input("Enter password to confirm transfer: ")
@@ -299,14 +303,11 @@ def net_banking_menu(acc, password):
             accounts = []
 
             with open(accounts_file) as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    accounts.append(row)
+                accounts = list(csv.reader(f))
 
             sender_balance = 0
 
-            for row in accounts:
-
+            for row in accounts[1:]:
                 if row[0] == acc:
                     sender_balance = float(row[9])
 
@@ -316,8 +317,7 @@ def net_banking_menu(acc, password):
 
             receiver_found = False
 
-            for row in accounts:
-
+            for row in accounts[1:]:
                 if row[0] == acc:
                     row[9] = str(float(row[9]) - amount)
 
@@ -330,24 +330,19 @@ def net_banking_menu(acc, password):
                 continue
 
             with open(accounts_file, "w", newline="") as f:
-
                 writer = csv.writer(f)
-
                 writer.writerows(accounts)
 
             print("Transfer Successful")
 
         elif ch == "2":
-
             check_balance(acc, password)
 
         elif ch == "3":
-
             break
 
 
-# -------- MONEY TRANSFER MENU --------
-
+# -------- MONEY TRANSFER --------
 
 def money_transfer_menu(acc, password):
 
@@ -374,8 +369,7 @@ def money_transfer_menu(acc, password):
             break
 
 
-# -------- USER DASHBOARD --------
-
+# -------- DASHBOARD --------
 
 def dashboard(acc, password):
 
@@ -399,7 +393,7 @@ def dashboard(acc, password):
             break
 
 
-# -------- MAIN PROGRAM --------
+# -------- MAIN --------
 
 while True:
 
@@ -414,16 +408,12 @@ while True:
         create_account()
 
     elif choice == "2":
-
         acc, password = login()
-
         if acc:
             dashboard(acc, password)
 
     elif choice == "3":
-
         print("Thank You For Using Quick Bank")
-
         break
 
     else:
